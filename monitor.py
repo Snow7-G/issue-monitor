@@ -184,20 +184,25 @@ def main():
                 scored.append((s, reason, i))
             scored.sort(key=lambda x: -x[0])
 
-            lines = [f"**{repo}**"]
-            for s, reason, i in scored:
-                mark = "🔥" if s >= 7 else ("⭐" if s >= 5 else "")
-                lines.append(
-                    f"· **{s}分**{mark} #{i['number']} [{i['title']}]({i['html_url']})"
-                    + (f"\n  └ {reason}" if s >= 5 else ""))
-            repo_sections.append("\n".join(lines) + f"（{len(fresh)} 个新）")
+            body = [f"**📁 {repo}**（{len(fresh)} 个新）", ""]
+            for idx, (s, reason, i) in enumerate(scored):
+                mark = " 🔥" if s >= 7 else (" ⭐" if s >= 5 else "")
+                body.append(f"**{s}分**{mark} · #{i['number']}")
+                body.append(f"[{i['title']}]({i['html_url']})")
+                if s >= 5:
+                    body.append(f"→ {reason}")
+                if idx < len(scored) - 1:
+                    body.append("————————")
+                else:
+                    body.append("")
+            repo_sections.append("\n".join(body))
 
             state["repos"][repo].extend(
                 {"number": i["number"], "title": i["title"]} for i in fresh)
             new_total += len(fresh)
 
     if new_total:
-        header = f"**🔔 GitHub 新 Issue 汇报（{new_total} 个，按适配度排序）**\n\n"
+        header = f"**🔔 GitHub 新 Issue 汇报（{new_total} 个，按简历贡献价值排序）**\n\n"
         post_wechat(header + "\n\n".join(repo_sections))
         print(f"pushed notification: {new_total} new issues")
     else:
