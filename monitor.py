@@ -30,27 +30,42 @@ API_HEADERS = {
     "User-Agent": "issue-monitor",
 }
 
-# 加分项：(关键词, 权重, 理由)。按用户画像定制。
+# 评分核心逻辑：对简历有帮助 = 能变成开源贡献的 > 面试素材类 > 背景协同类
+# (关键词, 权重, 理由)
 FIT_KEYWORDS = [
-    (["mcp", "model context protocol", "modelcontextprotocol"], 3.5, "MCP 协议（你有 MCP 贡献）"),
-    (["langchain4j", "spring ai", "jvm", "jdk", "maven", "gradle"], 3.0, "Java 生态（你有 langchain4j 贡献）"),
-    (["java"], 3.0, "Java 生态（你有 langchain4j 贡献）"),
-    (["tool call", "tool calling", "function call", "function calling", "tool use"], 2.0, "工具调用（agent 核心）"),
-    (["multi-agent", "multi agent", "orchestrat", "supervisor", "agent team", "handoff"], 2.0, "多智能体协作（你有 agent 项目）"),
-    (["medical", "health", "clinical", "hospital", "diagnos", "patient", "医疗"], 1.5, "医疗领域（你有医疗 agent 落地）"),
-    (["rag", "retrieval", "vector", "embedding", "knowledge base", "chunk"], 1.5, "RAG / 检索"),
-    (["streaming", "token usage", "latency", "performance", "regression", "timeout", "crash", "memory leak"], 1.0, "工程稳定性 / 性能"),
+    # 第一梯队：可能直接变成你的开源贡献（简历硬通货）
+    (["reproducib", "minimal example", "steps to reproduce", "sample code"], 3.0, "可复现 bug（容易出贡献）"),
+    (["tool call", "tool calling", "function call", "function calling", "tool use"], 2.5, "agent 核心技术（面试素材）"),
+    (["multi-agent", "multi agent", "orchestrat", "supervisor", "agent team", "handoff", "graph", "state"], 2.5, "agent 核心技术（面试素材）"),
+    (["rag", "retrieval", "vector", "embedding", "knowledge base", "chunk"], 2.5, "agent 核心技术（面试素材）"),
+    # 第二梯队：你的背景让你切入成本低
+    (["mcp", "model context protocol", "modelcontextprotocol"], 2.0, "MCP 方向（有贡献经验，切入快）"),
+    (["streaming", "latency", "performance", "regression", "timeout", "crash", "memory leak", "race condition"], 1.5, "工程能力展示"),
+    (["langchain4j", "spring ai", "jvm", "jdk", "maven", "gradle"], 1.5, "Java 生态协同"),
+    (["java"], 1.5, "Java 生态协同"),
+    # 第三梯队：谈资类
+    (["medical", "health", "clinical", "hospital", "diagnos", "patient"], 1.0, "医疗领域素材"),
     (["llm", "prompt", "chat model", "chatmodel"], 0.5, "LLM 基础"),
 ]
 
+# issue 上的 label 加分（贡献机会的最强信号）
+FIT_LABELS = {
+    "good first issue": (3.5, "官方标记新手可做"),
+    "help wanted": (3.0, "官方求贡献"),
+    "bug": (1.5, "bug 修复机会"),
+    "enhancement": (1.5, "feature 实现机会"),
+    "feature request": (1.5, "feature 实现机会"),
+}
+
 # 减分项：对求职帮助小的类型
 UNFIT_KEYWORDS = [
-    (["docs", "documentation", "typo", "readme", "translate", "translation", " spelling"], -1.5, "文档类"),
-    (["website", "css", "logo", "style", "favicon", "landing page"], -1.5, "前端外观类"),
+    (["docs", "documentation", "typo", "readme", "translate", "translation", " spelling"], -2.0, "文档类"),
+    (["website", "css", "logo", "style", "favicon", "landing page"], -2.0, "前端外观类"),
+    (["question", "how to", "usage question"], -1.0, "使用咨询类"),
     (["deprecated removal", "breaking change"], -0.5, "破坏性变更公告"),
 ]
 
-BASE_SCORE = 2.0  # 基础分：这些仓库本身就是 agent 核心生态
+BASE_SCORE = 1.5  # 基础分
 
 
 def api_json(url):
@@ -91,7 +106,7 @@ def fetch_open_issues(repo):
 
 
 def score_issue(issue):
-    """按用户画像打适配度分：0-10，保留 0.5 粒度，返回 (分数, 理由)。"""
+    """按「对简历的帮助程度」打分：0-10，保留 0.5 粒度，返回 (分数, 理由)。"""
     title = issue.get("title", "") or ""
     body = (issue.get("body", "") or "")[:600]
     text = (title + " " + body).lower()
@@ -109,6 +124,14 @@ def score_issue(issue):
                 if why not in reasons:
                     reasons.append(why)
                 break
+
+    # label 是贡献机会最强的信号，权重高于正文关键词
+    labels = {l.get("name", "").lower() for l in issue.get("labels", []) if isinstance(l, dict)}
+    for label, (weight, why) in FIT_LABELS.items():
+        if label in labels:
+            score += weight
+            if why not in reasons:
+                reasons.insert(0, why)
 
     for kws, weight, why in UNFIT_KEYWORDS:
         for kw in kws:
