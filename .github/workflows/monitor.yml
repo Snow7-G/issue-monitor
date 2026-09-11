@@ -2,12 +2,15 @@ name: Issue Monitor
 
 on:
   schedule:
-    - cron: "*/5 * * * *" # 每 5 分钟检查一次
-  workflow_dispatch: # 支持手动触发
+    - cron: "*/5 * * * *" # 保留：若 GitHub 恢复定时也能跑
+  workflow_dispatch: # 手动触发 + 自续链触发
 
 concurrency:
   group: issue-monitor
   cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   check:
@@ -32,3 +35,13 @@ jobs:
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Re-trigger next run (self-chaining)
+        if: always()
+        run: |
+          sleep 240
+          curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer ${{ secrets.CHAIN_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/${{ github.repository }}/actions/workflows/monitor.yml/dispatches \
+            -d '{"ref":"main"}'
