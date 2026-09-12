@@ -17,6 +17,7 @@ REPOS = [
     "langchain-ai/langgraph",
     "modelcontextprotocol/python-sdk",
     "crewAIInc/crewAI",
+    "langchain4j/langchain4j",
 ]
 
 STATE_DIR = "monitor-state"
@@ -170,12 +171,20 @@ def main():
     new_total = 0
     repo_sections = []
     for repo in REPOS:
-        known = {i["number"] for i in state["repos"].get(repo, [])}
         try:
             issues = fetch_open_issues(repo)
         except Exception as e:
             print(f"[error] {repo}: {e}", file=sys.stderr)
             continue
+
+        if repo not in state["repos"]:
+            # 新加入的仓库：静默建立基线，不推送历史 issue
+            state["repos"][repo] = [
+                {"number": i["number"], "title": i["title"]} for i in issues]
+            print(f"[new repo] {repo}: {len(issues)} open issues baselined, no notification")
+            continue
+
+        known = {i["number"] for i in state["repos"].get(repo, [])}
         fresh = [i for i in issues if i["number"] not in known]
         if fresh:
             scored = []
