@@ -16,19 +16,24 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      # Checkout 必须在 Restore state 之前：checkout 会清理工作区未跟踪文件，
+      # 放在前面才不会删掉恢复出来的状态文件
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # key 每轮唯一 + restore-keys 前缀匹配：保证每轮都能保存更新后的状态
       - name: Restore state
         uses: actions/cache@v4
         with:
           path: monitor-state
-          key: issue-monitor-state-v1
+          key: issue-monitor-state-v2-${{ github.run_id }}
+          restore-keys: |
+            issue-monitor-state-v2-
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Checkout
-        uses: actions/checkout@v4
 
       - name: Check new issues
         run: python monitor.py
