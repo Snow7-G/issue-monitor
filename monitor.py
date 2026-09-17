@@ -18,6 +18,8 @@ REPOS = [
     "spring-projects/spring-boot",
     "alibaba/nacos",
     "redisson/redisson",
+    "apache/shenyu",
+    "apache/dolphinscheduler",
 ]
 
 STATE_DIR = "monitor-state"
