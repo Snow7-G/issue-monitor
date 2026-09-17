@@ -15,6 +15,9 @@ import urllib.request
 REPOS = [
     "modelcontextprotocol/python-sdk",
     "langchain4j/langchain4j",
+    "spring-projects/spring-boot",
+    "alibaba/nacos",
+    "redisson/redisson",
 ]
 
 STATE_DIR = "monitor-state"
