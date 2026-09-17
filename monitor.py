@@ -13,10 +13,7 @@ import sys
 import urllib.request
 
 REPOS = [
-    "langchain-ai/langchain",
-    "langchain-ai/langgraph",
     "modelcontextprotocol/python-sdk",
-    "crewAIInc/crewAI",
     "langchain4j/langchain4j",
 ]
 
